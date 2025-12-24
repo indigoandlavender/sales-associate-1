@@ -1,0 +1,5 @@
+# Sales Associate - Internal Tool
+# Block all search engine crawlers
+
+User-agent: *
+Disallow: /
