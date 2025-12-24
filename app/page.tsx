@@ -1,202 +1,228 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useState, useEffect } from "react";
 
 interface Quote {
-  Client_ID: string;
-  First_Name: string;
-  Last_Name: string;
-  Email: string;
-  Journey_Interest: string;
+  Quote_ID: string;
+  Timestamp: string;
   Status: string;
-  Created_Date: string;
-  site_id: string;
-  site_name: string;
+  Country: string;
+  Journey: string;
+  Name: string;
+  Email: string;
+  Budget: string;
+  Travelers: string;
 }
 
-interface Stats {
-  totalQuotes: number;
+interface DashboardStats {
   newQuotes: number;
-  pendingProposals: number;
-  awaitingPayment: number;
+  inProgress: number;
+  totalQuotes: number;
 }
 
-export default function Dashboard() {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    totalQuotes: 0,
+export default function SalesAssociateDashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
     newQuotes: 0,
-    pendingProposals: 0,
-    awaitingPayment: 0,
+    inProgress: 0,
+    totalQuotes: 0,
   });
+  const [recentQuotes, setRecentQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await fetch("/api/quotes");
-        const data = await res.json();
-
-        if (data.success) {
-          setQuotes(data.quotes.slice(0, 10)); // Latest 10
-
-          // Calculate stats
-          const allQuotes = data.quotes;
-          setStats({
-            totalQuotes: allQuotes.length,
-            newQuotes: allQuotes.filter((q: Quote) => q.Status === "NEW").length,
-            pendingProposals: allQuotes.filter((q: Quote) => 
-              ["IN_PROGRESS", "ITINERARY_READY", "PRICED"].includes(q.Status)
-            ).length,
-            awaitingPayment: allQuotes.filter((q: Quote) => 
-              q.Status === "SENT_TO_CLIENT"
-            ).length,
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      } finally {
+    fetch("/api/quotes")
+      .then((r) => r.json())
+      .then((data) => {
+        const quotes = data.quotes || [];
+        
+        setStats({
+          newQuotes: quotes.filter((q: Quote) => q.Status === "New").length,
+          inProgress: quotes.filter((q: Quote) => q.Status === "In Progress").length,
+          totalQuotes: quotes.length,
+        });
+        setRecentQuotes(quotes.slice(0, 5));
         setLoading(false);
-      }
-    }
-
-    fetchData();
+      })
+      .catch(() => setLoading(false));
   }, []);
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "-";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const getStatusClass = (status: string) => {
-    const statusMap: Record<string, string> = {
-      NEW: "status-new",
-      IN_PROGRESS: "status-in-progress",
-      ITINERARY_READY: "status-ready",
-      PRICED: "status-ready",
-      SENT_TO_CLIENT: "status-sent",
-      PAID: "status-paid",
-      CONFIRMED: "status-paid",
-      CANCELLED: "status-cancelled",
-    };
-    return statusMap[status] || "bg-gray-100 text-gray-800";
-  };
-
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-2xl font-semibold mb-8">Dashboard</h1>
+    <div className="min-h-screen bg-background">
+      {/* Header - matches Slow Morocco */}
+      <header className="border-b border-foreground/10 py-4 px-6">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <Link href="/" className="text-sm tracking-[0.2em] uppercase">
+            S L O W &nbsp; W O R L D
+          </Link>
+          <nav className="flex items-center gap-8">
+            <Link href="/quotes" className="text-sm hover:opacity-70 transition-opacity">
+              QUOTES
+            </Link>
+            <Link href="/proposals" className="text-sm hover:opacity-70 transition-opacity">
+              PROPOSALS
+            </Link>
+          </nav>
+        </div>
+      </header>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <p className="text-sm text-gray-500 mb-1">Total Quotes</p>
-          <p className="text-3xl font-semibold">{stats.totalQuotes}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <p className="text-sm text-gray-500 mb-1">New Inquiries</p>
-          <p className="text-3xl font-semibold text-blue-600">{stats.newQuotes}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <p className="text-sm text-gray-500 mb-1">Pending Proposals</p>
-          <p className="text-3xl font-semibold text-yellow-600">{stats.pendingProposals}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <p className="text-sm text-gray-500 mb-1">Awaiting Payment</p>
-          <p className="text-3xl font-semibold text-purple-600">{stats.awaitingPayment}</p>
-        </div>
-      </div>
+      <main className="max-w-4xl mx-auto px-6 py-12">
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-8 h-8 border-2 border-foreground/20 border-t-foreground rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* Quick Stats - 3 columns like screenshot */}
+            <div className="grid grid-cols-3 gap-6 mb-12">
+              <div className="text-center">
+                <p className="text-4xl font-serif">{stats.newQuotes}</p>
+                <p className="text-sm text-foreground/50 mt-1">New</p>
+              </div>
+              <div className="text-center">
+                <p className="text-4xl font-serif">{stats.inProgress}</p>
+                <p className="text-sm text-foreground/50 mt-1">In Progress</p>
+              </div>
+              <div className="text-center">
+                <p className="text-4xl font-serif">{stats.totalQuotes}</p>
+                <p className="text-sm text-foreground/50 mt-1">Total Quotes</p>
+              </div>
+            </div>
 
-      {/* Recent Quotes */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="font-medium">Recent Quotes</h2>
-          <a href="/quotes" className="text-sm text-blue-600 hover:underline">
-            View all →
-          </a>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 text-left text-sm text-gray-500">
-              <tr>
-                <th className="px-6 py-3 font-medium">Client</th>
-                <th className="px-6 py-3 font-medium">Country</th>
-                <th className="px-6 py-3 font-medium">Journey</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Date</th>
-                <th className="px-6 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {quotes.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    No quotes yet. They'll appear here when guests submit the form.
-                  </td>
-                </tr>
-              ) : (
-                quotes.map((quote) => (
-                  <tr key={quote.Client_ID} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+            {/* Primary Tools - card style like screenshot */}
+            <div className="space-y-4 mb-16">
+              <Link
+                href="/quotes/new"
+                className="block p-8 border border-foreground/10 hover:border-foreground transition-colors"
+              >
+                <h2 className="font-serif text-xl mb-2">Quote Builder</h2>
+                <p className="text-foreground/50 text-sm">
+                  Create a custom journey quote for a client
+                </p>
+              </Link>
+              <Link
+                href="/quotes"
+                className="block p-8 border border-foreground/10 hover:border-foreground transition-colors"
+              >
+                <h2 className="font-serif text-xl mb-2">View All Quotes</h2>
+                <p className="text-foreground/50 text-sm">
+                  See and manage all quote requests
+                </p>
+              </Link>
+              <Link
+                href="/calculator"
+                className="block p-8 border border-foreground/10 hover:border-foreground transition-colors"
+              >
+                <h2 className="font-serif text-xl mb-2">Price Calculator</h2>
+                <p className="text-foreground/50 text-sm">
+                  Calculate journey costs and margins
+                </p>
+              </Link>
+            </div>
+
+            {/* Other Tools - grid like screenshot */}
+            <div className="border-t border-foreground/10 pt-12">
+              <p className="text-xs uppercase tracking-wide text-foreground/50 mb-6">Other Tools</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Link
+                  href="/journeys"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Journeys</p>
+                </Link>
+                <Link
+                  href="/accommodations"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Accommodations</p>
+                </Link>
+                <Link
+                  href="/content"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Content Library</p>
+                </Link>
+                <Link
+                  href="/settings"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Settings</p>
+                </Link>
+              </div>
+            </div>
+
+            {/* Recent Quotes */}
+            {recentQuotes.length > 0 && (
+              <div className="border-t border-foreground/10 pt-12 mt-12">
+                <p className="text-xs uppercase tracking-wide text-foreground/50 mb-6">Recent Quotes</p>
+                <div className="space-y-3">
+                  {recentQuotes.map((quote) => (
+                    <Link 
+                      key={quote.Quote_ID}
+                      href={`/quotes/${quote.Quote_ID}`}
+                      className="flex items-center justify-between p-4 border border-foreground/10 hover:border-foreground/30 transition-colors"
+                    >
                       <div>
-                        <p className="font-medium">
-                          {quote.First_Name} {quote.Last_Name}
+                        <p className="font-medium">{quote.Name}</p>
+                        <p className="text-sm text-foreground/50">
+                          {quote.Country} • {quote.Journey || "Custom Journey"}
                         </p>
-                        <p className="text-sm text-gray-500">{quote.Client_ID}</p>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {quote.site_name || quote.site_id}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {quote.Journey_Interest || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-block px-2 py-1 text-xs rounded ${getStatusClass(
-                          quote.Status
-                        )}`}
-                      >
-                        {quote.Status?.replace(/_/g, " ") || "NEW"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {formatDate(quote.Created_Date)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <a
-                        href={`/quotes/${quote.Client_ID}?site_id=${quote.site_id}`}
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        View
-                      </a>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      <div className="text-right">
+                        <p className="text-sm">{quote.Travelers} travelers</p>
+                        <p className="text-sm text-foreground/50">{quote.Budget}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                <Link 
+                  href="/quotes" 
+                  className="block text-center text-sm text-foreground/50 hover:text-foreground mt-4"
+                >
+                  View all →
+                </Link>
+              </div>
+            )}
+
+            {/* Filter by Country */}
+            <div className="border-t border-foreground/10 pt-12 mt-12">
+              <p className="text-xs uppercase tracking-wide text-foreground/50 mb-6">Filter by Country</p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <Link
+                  href="/quotes?country=morocco"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Morocco</p>
+                </Link>
+                <Link
+                  href="/quotes?country=namibia"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Namibia</p>
+                </Link>
+                <Link
+                  href="/quotes?country=turkiye"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Türkiye</p>
+                </Link>
+                <Link
+                  href="/quotes?country=tunisia"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Tunisia</p>
+                </Link>
+                <Link
+                  href="/quotes?country=mauritius"
+                  className="p-4 border border-foreground/10 hover:border-foreground transition-colors text-center"
+                >
+                  <p className="text-sm">Mauritius</p>
+                </Link>
+              </div>
+            </div>
+          </>
+        )}
+      </main>
     </div>
   );
 }
