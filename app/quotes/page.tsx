@@ -162,8 +162,8 @@ function QuotesContent() {
   };
 
   const handleEdit = (quote: Quote) => {
-    // Navigate to edit page
-    window.location.href = `/quotes/${quote.Client_ID}/edit`;
+    // Navigate to edit page with site_id
+    window.location.href = `/quotes/${quote.Client_ID}/edit?site_id=${quote.site_id}`;
   };
 
   const handleDuplicate = async (quote: Quote) => {

@@ -260,3 +260,95 @@ export async function generateClientId(siteId: string): Promise<string> {
   const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
   return `${prefix}${String(maxId + 1).padStart(3, "0")}`;
 }
+
+// Delete a row by row index
+export async function deleteSheetRow(
+  siteId: string,
+  tabName: string,
+  rowIndex: number // 1-based row number
+): Promise<boolean> {
+  try {
+    const config = getCountryConfig(siteId);
+    if (!config) {
+      throw new Error(`Unknown site: ${siteId}`);
+    }
+
+    const sheets = await getSheets();
+    
+    // Get sheet ID for the tab
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: config.sheetId,
+    });
+    
+    const sheet = spreadsheet.data.sheets?.find(
+      (s) => s.properties?.title === tabName
+    );
+    
+    if (!sheet?.properties?.sheetId) {
+      throw new Error(`Tab ${tabName} not found`);
+    }
+
+    // Delete the row using batchUpdate
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: config.sheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheet.properties.sheetId,
+                dimension: "ROWS",
+                startIndex: rowIndex - 1, // 0-based
+                endIndex: rowIndex, // exclusive
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    return true;
+  } catch (error) {
+    console.error(`Error deleting row ${rowIndex} in ${tabName} for ${siteId}:`, error);
+    return false;
+  }
+}
+
+// Get full row data including headers for duplication
+export async function getFullRowData(
+  siteId: string,
+  tabName: string,
+  fieldName: string,
+  fieldValue: string
+): Promise<{ headers: string[]; row: any[] } | null> {
+  try {
+    const config = getCountryConfig(siteId);
+    if (!config) {
+      throw new Error(`Unknown site: ${siteId}`);
+    }
+
+    const sheets = await getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: config.sheetId,
+      range: `${tabName}!A:ZZ`,
+    });
+
+    const rows = response.data.values || [];
+    if (rows.length < 2) return null;
+
+    const headers = rows[0];
+    const fieldIndex = headers.indexOf(fieldName);
+    if (fieldIndex === -1) return null;
+
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][fieldIndex] === fieldValue) {
+        return { headers, row: rows[i] };
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error(`Error getting row data in ${tabName} for ${siteId}:`, error);
+    return null;
+  }
+}
